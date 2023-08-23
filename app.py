@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, flash, jsonify
+from flask import Flask, request, render_template, redirect, flash, session
 from flask_debugtoolbar import DebugToolbarExtension
 from surveys import Question, Survey
 app=Flask(__name__)
@@ -7,9 +7,9 @@ app.config['SECRET_KEY'] = "chickenzarecool21837"
 app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 debug = DebugToolbarExtension(app)
 
-responses_dict={}
+
 RESPONSES_KEY="responses"
-index=0
+
 
 satisfaction_survey = Survey(
     "Customer Satisfaction Survey",
@@ -25,7 +25,7 @@ satisfaction_survey = Survey(
 @app.route('/')
 def home_page():
     ''' Start the servey '''
-    responses_dict[RESPONSES_KEY] = []
+    session[RESPONSES_KEY] = []
     return render_template('home.html', satisfaction_survey=satisfaction_survey)
 
 
@@ -38,9 +38,9 @@ def save_answer():
     response = request.form['choice']
 
     # add this response to the session
-    responses = responses_dict[RESPONSES_KEY]
+    responses = session[RESPONSES_KEY]
     responses.append(response)
-    responses_dict[RESPONSES_KEY] = responses
+    session[RESPONSES_KEY] = responses
 
 
     # check if there are more questions
@@ -52,13 +52,13 @@ def save_answer():
 @app.route('/thank_you')
 def thank_you():
     ''' Show when the survey is complete'''
-    return render_template('thank_you.html', responses=responses_dict[RESPONSES_KEY])
+    return render_template('thank_you.html', responses=session[RESPONSES_KEY])
 
 
 @app.route('/questions/<int:index>')
 def questions(index):
     ''' Display current question '''
-    responses=responses_dict.get(RESPONSES_KEY,[])
+    responses=session.get(RESPONSES_KEY,[])
 
     if responses is None:
         return redirect('/')
@@ -67,6 +67,7 @@ def questions(index):
         return redirect('/thank_you')
     
     if len(responses)!=index:
+        flash(f"Invalid question id: {index}.")
         return redirect(f'/questions/{len(responses)}')
     
     question = satisfaction_survey.questions[index]
